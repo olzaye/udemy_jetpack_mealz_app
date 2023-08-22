@@ -14,6 +14,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -22,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.soenmez.mealzapp.model.response.MealResponse
+import com.soenmez.mealzapp.navigation.MealNavigationType
 import com.soenmez.mealzapp.repository.FakeMealRepositoryImpl
 import com.soenmez.mealzapp.ui.theme.MealzAppTheme
 import org.koin.androidx.compose.koinViewModel
@@ -48,10 +52,8 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 internal fun MealsCategoriesScreen(
-    vm: MealsCategoriesViewModel = koinViewModel(),
-    navigationCallback: (String) -> Unit
+    vm: MealsCategoriesViewModel = koinViewModel(), navigationCallback: (MealNavigationType) -> Unit
 ) {
-    //val vm = koinViewModel<MealsCategoriesViewModel>()
     val meals = vm.mealsCategoriesFlow.collectAsState()
     LazyColumn(contentPadding = PaddingValues(16.dp)) {
         items(meals.value) {
@@ -62,18 +64,17 @@ internal fun MealsCategoriesScreen(
 
 @Composable
 internal fun MealCategory(
-    meal: MealResponse,
-    navigationCallback: (String) -> Unit
+    meal: MealResponse, navigationCallback: (MealNavigationType) -> Unit
 ) {
     var isExpended by remember { mutableStateOf(false) }
-    Card(
-        shape = RoundedCornerShape(8.dp),
+    val openDialog = remember { mutableStateOf(false) }
+
+    Card(shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 16.dp)
-            .clickable { navigationCallback(meal.id) }
-    ) {
+            .clickable { openDialog.value = true }) {
         Row(modifier = Modifier.animateContentSize()) {
             AsyncImage(
                 model = meal.categoryThumb,
@@ -106,16 +107,45 @@ internal fun MealCategory(
                     )
                 }
             }
-            Icon(
-                imageVector = if (isExpended) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+            Icon(imageVector = if (isExpended) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                 contentDescription = "Expand row icon",
                 modifier = Modifier
                     .padding(16.dp)
                     .align(if (isExpended) Alignment.Bottom else Alignment.CenterVertically)
-                    .clickable { isExpended = !isExpended }
-            )
+                    .clickable { isExpended = !isExpended })
         }
     }
+
+    if (openDialog.value) {
+        ShowDialog(openDialog, navigationCallback, meal.id)
+    }
+}
+
+@Composable
+internal fun ShowDialog(
+    openDialog: MutableState<Boolean>, navigationCallback: (MealNavigationType) -> Unit, id: String
+) {
+    AlertDialog(title = { Text(text = "Choose a Detail Page") },
+        text = { Text(text = "With which animation, you would like to open the page") },
+        onDismissRequest = {
+            openDialog.value = false
+        },
+        confirmButton = {
+            Button(onClick = {
+                openDialog.value = false
+                navigationCallback(MealNavigationType.AnimateMealDetailByClick(id))
+            }) {
+                Text(text = "Animate Ui with button Click")
+            }
+        },
+        dismissButton = {
+            Button(onClick = {
+                openDialog.value = false
+                navigationCallback(MealNavigationType.AnimateMealDetailByScrolling(id))
+            }) {
+                Text(text = "Animate Ui by scrolling the UI")
+            }
+        })
 }
 
 @Preview(showBackground = true)
